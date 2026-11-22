@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+coverage
+out
+dist
+README.md
+
+# Prebuilt site bundled in the release archive
+ready-to-upload/
