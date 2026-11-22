@@ -21,19 +21,23 @@ Static and server modes share the same validated resolver. Existing example copi
 with a modern-Macedonia row are upgraded in place, retaining their location IDs
 and progress. Custom study sets are not changed.
 
-## Midnight design
+## Night survey design
 
-A calmer ATLAS: deep navy, crisp white and a soft citron accent. Space Grotesk
-headings, Plus Jakarta Sans UI and JetBrains Mono details are bundled by
-Next.js. The custom two-tone SVG glyphs and folded-map monogram replace the old
-emoji, text-glyph controls and compass branding.
+An ATLAS that studies back: dark chart paper, a graphite ink ramp and a single
+citron light. Fraunces serif display, Plus Jakarta Sans UI and JetBrains Mono
+survey metadata are bundled locally as variable fonts. The design language
+takes its cue from award-winning interactive sites (the Awwwards model for this
+rework is Unseen Studio's dark, globe-led composition) and applies it to the
+app's own world: a survey desk at midnight.
 
-- Shorter, cleaner landing page with an interactive European map tour, four
-  study routes, saved sets and a quick flip-clue quiz.
+- Landing page rebuilt around one bright object — a drag-to-spin dot-matrix
+  globe with cursor-lit dots and a live coordinate readout — plus a place-name
+  ticker, four study-route index rows and saved sets. The flip-clue quiz and
+  the interactive map tour demo were removed.
 - Spacious study workspace, searchable place index, numbered pins, tour controls,
   place notes and all six study sections.
-- Navy is the default; the optional daylight theme uses white and navy. Phone
-  layouts, keyboard controls and reduced-motion support are retained.
+- The night theme is the default; the optional daylight theme uses warm chart
+  paper. Phone layouts, keyboard controls and reduced-motion support are retained.
 - Brief, quiet milestone acknowledgements replace confetti. Navigation and
   buttons share one consistent icon, spacing and surface language.
 - Smooth cursor-anchored zoom and locally bundled Natural Earth boundaries.
