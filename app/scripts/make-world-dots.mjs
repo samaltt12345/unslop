@@ -45,8 +45,8 @@ function inside(lng, lat, r) {
   return hit;
 }
 
-const ROWS = 78;          // latitude rows from -56S to 78N
-const BASE_STEP = 360 / 168; // longitude step at the equator, degrees
+const ROWS = 96;          // latitude rows from -56S to 78N
+const BASE_STEP = 360 / 220; // longitude step at the equator, degrees
 const dots = [];
 const latTop = 78, latBottom = -56;
 const latStep = (latTop - latBottom) / (ROWS - 1);

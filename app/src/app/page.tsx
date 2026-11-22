@@ -194,7 +194,6 @@ export default function Home() {
 
       <footer className="calm-footer calm-container">
         <AtlasBrand/>
-        <span className="footer-coords">{coords}</span>
         <div className="footer-links">
           <Link href="/sets">My atlas</Link>
           <Link href="/create">Create a set</Link>

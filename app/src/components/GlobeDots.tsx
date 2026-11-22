@@ -204,13 +204,13 @@ function GlobeDots(
           rot += vel;
           vel *= Math.pow(0.93, 60 * dt);
         } else if (!reduced) {
-          rot += 0.045 * dt;
+          rot += 0.055 * dt;
         }
       }
       rotRef.current = rot;
 
       // The frame only redraws when something can have changed.
-      const moving = dragging || Math.abs(vel) > 1e-5 || (!reduced && 0.045 * dt > 0);
+      const moving = dragging || Math.abs(vel) > 1e-5 || (!reduced);
       if (!moving && !cursor.active) {
         pausedFrames++;
         if (pausedFrames > 20) return;
@@ -220,13 +220,13 @@ function GlobeDots(
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      const R = Math.min(W, H) * 0.42;
+      const R = Math.min(W, H) * 0.465;
       const cx = W / 2;
       const cy = H / 2;
       const sinR = Math.sin(rot), cosR = Math.cos(rot);
       const sinT = Math.sin(TILT), cosT = Math.cos(TILT);
 
-      const reach = Math.max(56, R * 0.3) * dpr;
+      const reach = Math.max(64, R * 0.32) * dpr;
       const reach2 = reach * reach;
       let hoverName = "";
       let hoverBest = Infinity;
@@ -246,7 +246,7 @@ function GlobeDots(
         const depth = 0.22 + 0.68 * z;
         if (near) {
           ctx.globalAlpha = Math.min(1, depth + 0.3);
-          const s = 5 + 2.4 * z + 2.2 * (1 - d2 / reach2);
+          const s = 6.2 + 2.6 * z + 2.8 * (1 - d2 / reach2);
           ctx.drawImage(accentSprite, sx - s / 2, sy - s / 2, s, s);
           if (names[i] && d2 < hoverBest) {
             hoverBest = d2;
@@ -254,7 +254,7 @@ function GlobeDots(
           }
         } else {
           ctx.globalAlpha = depth;
-          const s = 4.4 + 2 * z;
+          const s = 5.2 + 2.3 * z;
           ctx.drawImage(baseSprite, sx - s / 2, sy - s / 2, s, s);
         }
       }

@@ -848,7 +848,7 @@ const GeoMap = forwardRef<GeoMapHandle, GeoMapProps>(function GeoMap(
 
   return (
     <div className={`relative h-full w-full ${className}`}>
-      <div ref={containerRef} className="gm-map" aria-label="Interactive geography map" />
+      <div ref={containerRef} className={`gm-map ${terrain ? "gm-map-terrain" : ""}`} aria-label="Interactive geography map" />
       {!minimalControls && <div className="atlas-map-layers"><button className="gm-border-control" type="button" aria-pressed={bordersVisible} title="Toggle modern country borders" onClick={() => {
         const visible = !bordersVisible; setBordersVisible(visible); bordersVisibleRef.current = visible;
         const layer = bordersRef.current; const map = mapRef.current;
