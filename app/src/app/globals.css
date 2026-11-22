@@ -458,7 +458,7 @@ html.dark .gm-map {
 html.dark .leaflet-tile-pane {
   filter: brightness(0.62) saturate(0.68) contrast(1.08);
 }
-/* Terrain layers are real photographs of the world — keep their natural
+/* Terrain layers are real reference maps of the world — keep their natural
    green and blue in both themes. */
 html.dark .gm-map-terrain .leaflet-tile-pane {
   filter: none;

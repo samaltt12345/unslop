@@ -1,7 +1,8 @@
 /**
- * Generates src/lib/world-dots.json — a dot-matrix of Earth's land masses
- * with the owning country's name attached, sampled from the bundled
- * Natural Earth countries file (public domain).
+ * Generates src/lib/world-dots.json — a dot-matrix of Earth's land masses,
+ * sampled from the bundled Natural Earth countries file (public domain).
+ * Dots are evenly spaced in physical distance (rows tighten in longitude
+ * toward the poles) so the dot globe reads uniformly.
  *
  *   node scripts/make-world-dots.mjs
  */
@@ -14,12 +15,11 @@ const geo = JSON.parse(
   readFileSync(resolve(here, "../public/data/countries.geojson"), "utf8")
 );
 
-// Collect every closed ring, with a bbox and country for cheap rejection.
+// Collect every closed ring, with a bbox for cheap rejection.
 const rings = [];
 for (const f of geo.features) {
   const g = f.geometry;
   const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
-  const name = f.properties?.name || "";
   for (const poly of polys) {
     const outer = poly[0];
     let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
@@ -29,7 +29,7 @@ for (const f of geo.features) {
       if (lat < minLat) minLat = lat;
       if (lat > maxLat) maxLat = lat;
     }
-    rings.push({ pts: outer, minLng, maxLng, minLat, maxLat, name });
+    rings.push({ pts: outer, minLng, maxLng, minLat, maxLat });
   }
 }
 
@@ -45,8 +45,8 @@ function inside(lng, lat, r) {
   return hit;
 }
 
-const ROWS = 96;          // latitude rows from -56S to 78N
-const BASE_STEP = 360 / 220; // longitude step at the equator, degrees
+const ROWS = 78;          // latitude rows from -56S to 78N
+const BASE_STEP = 360 / 168; // longitude step at the equator, degrees
 const dots = [];
 const latTop = 78, latBottom = -56;
 const latStep = (latTop - latBottom) / (ROWS - 1);
@@ -61,18 +61,15 @@ for (let r = 0; r < ROWS; r++) {
     if (lng > 180) continue;
     for (const ring of rings) {
       if (inside(lng, lat, ring)) {
-        dots.push([Math.round(lng * 100) / 100, Math.round(lat * 100) / 100, ring.name]);
+        dots.push([Math.round(lng * 100) / 100, Math.round(lat * 100) / 100]);
         break;
       }
     }
   }
 }
 
+const lng = dots.map((d) => d[0]);
+const lat = dots.map((d) => d[1]);
 const out = resolve(here, "../src/lib/world-dots.json");
-const payload = {
-  lng: dots.map((d) => d[0]),
-  lat: dots.map((d) => d[1]),
-  name: dots.map((d) => d[2]),
-};
-writeFileSync(out, JSON.stringify(payload));
-console.log(`world-dots.json: ${dots.length} dots, ${(JSON.stringify(payload).length / 1024).toFixed(0)} KB`);
+writeFileSync(out, JSON.stringify({ lng, lat }));
+console.log(`world-dots.json: ${dots.length} dots, ${(JSON.stringify({ lng, lat }).length / 1024).toFixed(0)} KB`);

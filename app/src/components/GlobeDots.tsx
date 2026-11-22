@@ -1,31 +1,23 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * GlobeDots — the night-atlas object.
  *
  * A dot-matrix Earth rendered on a 2D canvas with an orthographic
  * projection. It drifts slowly on its own, spins with a drag (with
- * inertia), lights the dots nearest the cursor in citron, and reports
- * which country is under the cursor. Dot positions come from
- * src/lib/world-dots.json, sampled from the bundled Natural Earth
- * countries file (public domain).
+ * inertia), and the dots nearest the cursor light up in citron.
+ * Dot positions come from src/lib/world-dots.json, sampled from the
+ * bundled Natural Earth countries file (public domain).
  */
 
 import dotsJson from "@/lib/world-dots.json";
 
-export interface GlobeHandle {
-  /** Animates the globe so the given longitude sits at the center. */
-  spinTo: (lngDeg: number) => void;
-}
-
 interface GlobeDotsProps {
   className?: string;
-  /** Reports the coordinates at the center of the view. */
+  /** Reports the geographic point currently at the center of the view. */
   onCenterChange?: (label: string) => void;
-  /** Reports the country currently under the cursor, or "". */
-  onHoverCountry?: (name: string) => void;
 }
 
 const TILT = -0.38; // radians — keeps the study-relevant north in view
@@ -36,31 +28,13 @@ function formatCoord(latDeg: number, lngDeg: number) {
   return `${latDeg >= 0 ? "N" : "S"} ${lat}° · ${lngDeg >= 0 ? "E" : "W"} ${lng}°`;
 }
 
-function GlobeDots(
-  { className = "", onCenterChange, onHoverCountry }: GlobeDotsProps,
-  ref: React.Ref<GlobeHandle>
-) {
+export default function GlobeDots({ className = "", onCenterChange }: GlobeDotsProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const cbRef = useRef({ onCenterChange, onHoverCountry });
+  const cbRef = useRef(onCenterChange);
   useEffect(() => {
-    cbRef.current = { onCenterChange, onHoverCountry };
-  }, [onCenterChange, onHoverCountry]);
-
-  // spinTo state lives outside the effect so the handle can set it.
-  const spinTarget = useRef<{ rot: number } | null>(null);
-  const rotRef = useRef(-0.6);
-
-  useImperativeHandle(ref, () => ({
-    spinTo(lngDeg: number) {
-      const current = rotRef.current;
-      // Center longitude = -rot; pick the shortest path around the sphere.
-      let desired = -lngDeg * (Math.PI / 180);
-      const twoPi = Math.PI * 2;
-      desired += Math.round((current - desired) / twoPi) * twoPi;
-      spinTarget.current = { rot: desired };
-    },
-  }));
+    cbRef.current = onCenterChange;
+  }, [onCenterChange]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -70,10 +44,8 @@ function GlobeDots(
     if (!ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const data = dotsJson as { lng: number[]; lat: number[]; name: string[] };
-    const lngs = data.lng;
-    const lats = data.lat;
-    const names = data.name;
+    const lngs = (dotsJson as { lng: number[]; lat: number[] }).lng;
+    const lats = (dotsJson as { lng: number[]; lat: number[] }).lat;
     const N = lngs.length;
 
     // Precompute unit-sphere positions.
@@ -137,18 +109,26 @@ function GlobeDots(
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
 
-    // Rotation state — velocity is integrated per frame for a smooth spin.
+    // Rotation state.
     let rot = -0.6;
     let vel = 0;
     let dragging = false;
     let lastX = 0;
+    let moved = 0;
     const cursor = { x: -1e4, y: -1e4, active: false };
+
+    const spin = (e: PointerEvent) => {
+      const dx = e.clientX - lastX;
+      lastX = e.clientX;
+      moved += Math.abs(dx);
+      rot += dx * 0.005;
+      vel = dx * 0.0022;
+    };
 
     const onDown = (e: PointerEvent) => {
       dragging = true;
+      moved = 0;
       lastX = e.clientX;
-      vel = 0;
-      spinTarget.current = null;
       wrap.classList.add("is-grabbing");
       canvas.setPointerCapture(e.pointerId);
     };
@@ -157,12 +137,7 @@ function GlobeDots(
       cursor.x = (e.clientX - r.left) * dpr;
       cursor.y = (e.clientY - r.top) * dpr;
       cursor.active = true;
-      if (dragging) {
-        const dx = e.clientX - lastX;
-        lastX = e.clientX;
-        rot += dx * 0.0042;
-        vel = dx * 0.0042;
-      }
+      if (dragging) spin(e);
     };
     const onUp = () => {
       dragging = false;
@@ -181,55 +156,41 @@ function GlobeDots(
     let raf = 0;
     let lastT = 0;
     let lastLabel = "";
-    let lastCountry = "";
-    let pausedFrames = 0;
+    let idleFrames = 0;
 
     const draw = (t: number) => {
       raf = requestAnimationFrame(draw);
       const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016);
       lastT = t;
 
-      // Motion: a requested spin first, then inertia, then a slow drift.
-      const target = spinTarget.current;
-      if (target) {
-        const diff = target.rot - rot;
-        rot += diff * Math.min(1, 7 * dt);
-        vel = 0;
-        if (Math.abs(diff) < 0.002) {
-          rot = target.rot;
-          spinTarget.current = null;
-        }
-      } else if (!dragging) {
-        if (Math.abs(vel) > 1e-5) {
-          rot += vel;
-          vel *= Math.pow(0.93, 60 * dt);
+      // Motion: inertia after a drag, a slow drift when idle.
+      if (!dragging) {
+        if (Math.abs(vel) > 0.00002) {
+          rot += vel * 60 * dt;
+          vel *= Math.pow(0.94, 60 * dt);
         } else if (!reduced) {
-          rot += 0.055 * dt;
+          rot += 0.05 * dt;
         }
       }
-      rotRef.current = rot;
 
-      // The frame only redraws when something can have changed.
-      const moving = dragging || Math.abs(vel) > 1e-5 || (!reduced);
-      if (!moving && !cursor.active) {
-        pausedFrames++;
-        if (pausedFrames > 20) return;
+      // Skip frames when nothing moved (saves battery, keeps it crisp).
+      if (!dragging && Math.abs(vel) <= 0.00002 && !cursor.active && !reduced) {
+        idleFrames++;
+        if (idleFrames > 30) return;
       }
-      pausedFrames = 0;
+      idleFrames = 0;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      const R = Math.min(W, H) * 0.465;
+      const R = Math.min(W, H) * 0.42;
       const cx = W / 2;
       const cy = H / 2;
       const sinR = Math.sin(rot), cosR = Math.cos(rot);
       const sinT = Math.sin(TILT), cosT = Math.cos(TILT);
 
-      const reach = Math.max(64, R * 0.32) * dpr;
+      const reach = Math.max(52, R * 0.34) * dpr;
       const reach2 = reach * reach;
-      let hoverName = "";
-      let hoverBest = Infinity;
 
       for (let i = 0; i < N; i++) {
         const x = px[i] * cosR - pz[i] * sinR;
@@ -245,36 +206,28 @@ function GlobeDots(
         const near = cursor.active && d2 < reach2;
         const depth = 0.22 + 0.68 * z;
         if (near) {
-          ctx.globalAlpha = Math.min(1, depth + 0.3);
-          const s = 6.2 + 2.6 * z + 2.8 * (1 - d2 / reach2);
+          ctx.globalAlpha = Math.min(1, depth + 0.25);
+          const s = 5 + 2.4 * z + 2 * (1 - d2 / reach2);
           ctx.drawImage(accentSprite, sx - s / 2, sy - s / 2, s, s);
-          if (names[i] && d2 < hoverBest) {
-            hoverBest = d2;
-            hoverName = names[i];
-          }
         } else {
           ctx.globalAlpha = depth;
-          const s = 5.2 + 2.3 * z;
+          const s = 4.4 + 2 * z;
           ctx.drawImage(baseSprite, sx - s / 2, sy - s / 2, s, s);
         }
       }
       ctx.globalAlpha = 1;
 
-      if (cbRef.current.onHoverCountry && hoverName !== lastCountry) {
-        lastCountry = hoverName;
-        cbRef.current.onHoverCountry(hoverName);
-      }
-
       // Report the coordinates at the center of the view.
-      if (cbRef.current.onCenterChange) {
+      if (cbRef.current) {
         const centerLat = (TILT * 180) / Math.PI;
+        // center longitude undoes the spin
         let centerLng = ((-rot * 180) / Math.PI) % 360;
         if (centerLng > 180) centerLng -= 360;
         if (centerLng < -180) centerLng += 360;
         const label = formatCoord(centerLat, centerLng);
         if (label !== lastLabel) {
           lastLabel = label;
-          cbRef.current.onCenterChange(label);
+          cbRef.current(label);
         }
       }
     };
@@ -293,13 +246,7 @@ function GlobeDots(
 
   return (
     <div ref={wrapRef} className={`hero-globe ${className}`}>
-      <canvas
-        ref={canvasRef}
-        aria-label="A dot-matrix globe of Earth. Drag to spin."
-        role="img"
-      />
+      <canvas ref={canvasRef} aria-label="A dot-matrix globe of Earth. Drag to spin." role="img" />
     </div>
   );
 }
-
-export default forwardRef(GlobeDots);

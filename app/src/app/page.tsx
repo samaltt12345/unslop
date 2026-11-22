@@ -1,29 +1,27 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AtlasBrand from "@/components/AtlasBrand";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Icon } from "@/components/Icons";
-import GlobeDots, { type GlobeHandle } from "@/components/GlobeDots";
+import GlobeDots from "@/components/GlobeDots";
+import { GAZETTEER } from "@/lib/gazetteer";
 import { listSets, loadExampleSet } from "@/lib/client";
 import type { StudySetDTO } from "@/lib/types";
 
 const modes = [
-  { icon: "book", title: "Learn", path: "learn" },
-  { icon: "cards", title: "Flashcards", path: "flashcards" },
-  { icon: "target", title: "Test", path: "test" },
-  { icon: "globe", title: "Blank map", path: "test?blank=1" },
+  { icon: "book", title: "Learn", text: "Drills in small groups, until every place sticks.", path: "learn" },
+  { icon: "cards", title: "Flashcards", text: "Both directions — name the place, find the place.", path: "flashcards" },
+  { icon: "target", title: "Test yourself", text: "Typed, multiple choice, or click the map. Graded as you go.", path: "test" },
+  { icon: "globe", title: "Blank map", text: "No labels. Just you and your bearings.", path: "test?blank=1" },
 ];
 
-const regions = [
-  { name: "Europe", lng: 14 },
-  { name: "Africa", lng: 22 },
-  { name: "Asia", lng: 92 },
-  { name: "N. America", lng: -98 },
-  { name: "S. America", lng: -62 },
-  { name: "Oceania", lng: 138 },
-];
+/** A slow strip of real places the atlas already knows. */
+const tickerPlaces = GAZETTEER.filter((e) => e.type === "Country")
+  .filter((_, i) => i % 4 === 0)
+  .slice(0, 26)
+  .map((e) => e.name);
 
 function useReveal() {
   useEffect(() => {
@@ -37,7 +35,7 @@ function useReveal() {
           }
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.12 }
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
@@ -46,24 +44,17 @@ function useReveal() {
 
 export default function Home() {
   const router = useRouter();
-  const globe = useRef<GlobeHandle>(null);
-  const stage = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sets, setSets] = useState<StudySetDTO[]>([]);
   const [coords, setCoords] = useState("N 22.0° · W 034.0°");
-  const [country, setCountry] = useState("");
-  const [chip, setChip] = useState({ x: 0, y: 0 });
   useReveal();
   useEffect(() => {
     listSets().then(setSets).catch(() => {});
   }, []);
-
   async function open(path = "") {
-    setBusy(true);
-    setError("");
+    setBusy(true); setError("");
     try {
-      // The 57 built-in places, loaded and plotted.
       const id = await loadExampleSet();
       router.push(`/set/${id}${path ? `/${path}` : ""}`);
     } catch {
@@ -71,13 +62,7 @@ export default function Home() {
       setBusy(false);
     }
   }
-
-  function trackCursor(e: React.PointerEvent) {
-    const r = stage.current?.getBoundingClientRect();
-    if (!r) return;
-    setChip({ x: e.clientX - r.left, y: e.clientY - r.top });
-  }
-
+  const ticker = useMemo(() => [...tickerPlaces, ...tickerPlaces], []);
   return (
     <div className="calm-home">
       <header className="calm-site-header">
@@ -95,96 +80,83 @@ export default function Home() {
       </header>
 
       <main>
-        {/* Night stage: star field, the globe, one promise */}
-        <section className="calm-hero">
-          <div className="hero-backdrop" aria-hidden="true"/>
-          <div className="calm-container hero-grid">
-            <div className="calm-hero-copy">
-              <div className="calm-eyebrow"><span className="calm-live-dot"/>The night atlas</div>
-              <h1>Less memorizing.<br/>More <em>knowing.</em></h1>
-              <p>57 places are already plotted and waiting.</p>
-              <div className="calm-hero-actions">
-                <button className="calm-primary" onClick={() => open()} disabled={busy}>
-                  {busy ? "Plotting…" : "Start exploring"}<Icon name="arrow" size={20}/>
-                </button>
-                <Link href="/create" className="calm-secondary" aria-label="Create your own set">
-                  <Icon name="plus" size={16}/>
-                </Link>
-              </div>
-              {error && <p role="alert">{error}</p>}
+        {/* The night stage: one bright object, one promise */}
+        <section className="calm-hero calm-container">
+          <div className="calm-hero-copy">
+            <div className="calm-eyebrow"><span className="calm-live-dot"/>An atlas that studies back</div>
+            <h1>Less memorizing.<br/>More <em>knowing.</em></h1>
+            <p>Paste the list you have to learn. Every place is plotted on a working map, then drilled with flashcards, tests and a blank map until it sticks.</p>
+            <div className="calm-hero-actions">
+              <button className="calm-primary" onClick={() => open()} disabled={busy}>
+                {busy ? "Opening your atlas…" : "Start exploring"}<Icon name="arrow" size={20}/>
+              </button>
+              <Link href="/create" className="calm-secondary">Make your own<Icon name="plus" size={16}/></Link>
             </div>
-
-            <div
-              className="hero-stage"
-              ref={stage}
-              onPointerMove={trackCursor}
-              onPointerLeave={() => setCountry("")}
-            >
-              <GlobeDots ref={globe} onCenterChange={setCoords} onHoverCountry={setCountry}/>
-              <div className="hero-meta tr">{country || "ATLAS · NIGHT SURVEY"}</div>
-              <div className="hero-meta bl">{coords}</div>
-              {country && (
-                <div
-                  className="hero-country-chip"
-                  style={{ left: chip.x + 14, top: chip.y - 34 }}
-                  aria-hidden="true"
-                >
-                  {country}
-                </div>
-              )}
-              <div className="hero-jump" role="group" aria-label="Spin the globe to a region">
-                {regions.map((r) => (
-                  <button key={r.name} onClick={() => globe.current?.spinTo(r.lng)}>
-                    {r.name}
-                  </button>
-                ))}
-              </div>
+            {error && <p role="alert">{error}</p>}
+            <div className="calm-hero-proof">
+              <span><Icon name="check" size={14}/>57 built-in places</span>
+              <span>No account needed</span>
+              <span>Progress stays on this device</span>
             </div>
+          </div>
+          <div className="hero-stage">
+            <div className="hero-meta tr"><span className="hero-meta-dot"/>ATLAS · NIGHT SURVEY · SHEET 01</div>
+            <GlobeDots onCenterChange={setCoords}/>
+            <div className="hero-meta br">{coords}</div>
+            <div className="hero-drag-hint"><Icon name="compass" size={13}/>DRAG TO SPIN</div>
           </div>
         </section>
 
-        {/* One bright moment: the survey desk */}
-        <section className="calm-desk calm-container" data-reveal>
-          <figure className="desk-figure">
-            <img
-              src="/img/survey-desk.jpg"
-              alt="A survey desk at midnight: numbered pins joined by citron thread on a dark chart"
-            />
-            <figcaption>
-              <span className="calm-eyebrow">Your list becomes this</span>
-              <h2>Plotted. Pinned. Threaded together.</h2>
-            </figcaption>
-          </figure>
-        </section>
+        {/* The contents of the atlas, set in type */}
+        <div className="atlas-ticker" aria-hidden="true">
+          <div className="atlas-ticker-track">
+            {ticker.map((name, i) => (
+              <span key={i}>{name}<i>·</i></span>
+            ))}
+          </div>
+        </div>
 
-        {/* Four routes, one tap each */}
-        <section id="study-modes" className="calm-modes calm-container" data-reveal>
-          <div className="mode-rows">
+        {/* Four routes into the same atlas */}
+        <section id="study-modes" className="calm-modes calm-container">
+          <div className="calm-section-heading" data-reveal>
+            <div>
+              <span className="calm-eyebrow">One atlas, four routes</span>
+              <h2>Find your way.</h2>
+            </div>
+            <p>Same map, same places — pick the pace that makes them stick.</p>
+          </div>
+          <div className="mode-rows" data-reveal>
             {modes.map((m, i) => (
               <button key={m.path} className="mode-row" onClick={() => open(m.path)} disabled={busy}>
-                <span className="mode-row-num"><em>0{i + 1}</em></span>
-                <span className="mode-row-title"><Icon name={m.icon} size={20}/>{m.title}</span>
-                <span className="mode-row-go" aria-hidden="true"><Icon name="arrow" size={17}/></span>
+                <span className="mode-row-num"><em>0{i + 1}</em>/ 04</span>
+                <span>
+                  <h3><Icon name={m.icon} size={22}/>{m.title}</h3>
+                  <p>{m.text}</p>
+                </span>
+                <span className="mode-row-go" aria-hidden="true"><Icon name="arrow" size={18}/></span>
               </button>
             ))}
           </div>
         </section>
 
         {sets.length > 0 && (
-          <section className="calm-recent calm-container" data-reveal>
-            <div className="calm-section-heading">
-              <span className="calm-eyebrow">Your atlas</span>
-              <Link className="calm-text-link" href="/sets">View all<Icon name="arrow" size={15}/></Link>
+          <section className="calm-recent calm-container">
+            <div className="calm-section-heading" data-reveal>
+              <div>
+                <span className="calm-eyebrow">Right where you left off</span>
+                <h2>Your atlas.</h2>
+              </div>
+              <Link className="calm-text-link" href="/sets">View my atlas<Icon name="arrow" size={16}/></Link>
             </div>
-            <div className="calm-recent-grid">
+            <div className="calm-recent-grid" data-reveal>
               {sets.slice(0, 3).map((s) => (
                 <Link href={`/set/${s.id}`} key={s.id}>
-                  <span className="calm-icon-tile"><Icon name="map" size={20}/></span>
+                  <span className="calm-icon-tile"><Icon name="map" size={21}/></span>
                   <div>
                     <h3>{s.name.replace(" (Example)", "")}</h3>
-                    <p>{s.locationCount ?? 0} places</p>
+                    <p>{s.locationCount ?? 0} PLACES</p>
                   </div>
-                  <Icon name="arrow" size={16}/>
+                  <Icon name="arrow" size={17}/>
                 </Link>
               ))}
             </div>
@@ -193,11 +165,14 @@ export default function Home() {
       </main>
 
       <footer className="calm-footer calm-container">
-        <AtlasBrand/>
-        <div className="footer-links">
-          <Link href="/sets">My atlas</Link>
-          <Link href="/create">Create a set</Link>
-          <a href="#" aria-label="Back to top"><Icon name="arrow" style={{ transform: "rotate(-90deg)" }}/></a>
+        <div className="footer-wordmark" aria-hidden="true">atlas<i>.</i></div>
+        <div className="footer-side">
+          <span>A world worth knowing · N 40.8° · W 073.6°</span>
+          <div className="footer-links">
+            <Link href="/sets">My atlas</Link>
+            <Link href="/create">Create a set</Link>
+            <a href="#" aria-label="Back to top"><Icon name="arrow" style={{ transform: "rotate(-90deg)" }}/></a>
+          </div>
         </div>
       </footer>
     </div>
