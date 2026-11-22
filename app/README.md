@@ -31,9 +31,10 @@ rework is Unseen Studio's dark, globe-led composition) and applies it to the
 app's own world: a survey desk at midnight.
 
 - Landing page rebuilt around one bright object — a drag-to-spin dot-matrix
-  globe with cursor-lit dots and a live coordinate readout — plus a place-name
-  ticker, four study-route index rows and saved sets. The flip-clue quiz and
-  the interactive map tour demo were removed.
+  globe with cursor-lit dots, country hover, region jumps and a live coordinate
+  readout — set on a star-field hero, plus a survey-desk feature image and four
+  study-route index rows. The flip-clue quiz and the interactive map tour demo
+  were removed.
 - Spacious study workspace, searchable place index, numbered pins, tour controls,
   place notes and all six study sections.
 - The night theme is the default; the optional daylight theme uses warm chart

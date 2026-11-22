@@ -19,6 +19,9 @@ import type { NextConfig } from "next";
 const isStatic = process.env.GEOMASTER_STATIC === "1";
 
 const nextConfig: NextConfig = {
+  // Preview environments reach the dev server through a proxied origin; without
+  // this, Next blocks every dev resource and the app renders with no JavaScript.
+  allowedDevOrigins: ["*.e2b.app", "*.e2b.app:3000"],
   pageExtensions: isStatic
     ? ["tsx", "ts", "jsx", "js"]
     : ["tsx", "ts", "jsx", "js", "node.ts"],
